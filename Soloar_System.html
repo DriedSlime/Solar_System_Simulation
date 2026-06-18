@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>태양계 시뮬레이터</title>
+    <style>
+        body { margin: 0; padding: 0; overflow: hidden; background-color: #000000; }
+        
+        #glCanvas {
+            width: 100vw;
+            height: 100vh;
+            background-image: url('Images/milky_way.jpg');
+            background-size: cover;
+            background-position: center;
+            display: block;
+        }
+
+        /* 상단 슬라이더 랙 배치를 위한 기본 구조 규격 */
+        #uiContainer {
+            position: absolute;
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(40, 40, 40, 0.9); 
+            padding: 15px 25px;
+            border-radius: 12px;
+            display: grid;
+            grid-template-columns: repeat(6, 1fr); 
+            gap: 15px 20px;
+            z-index: 10;
+            color: #ffffff;
+            font-family: sans-serif;
+            border: 1px solid #666666;
+            max-width: 95vw;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .control-group label {
+            font-size: 11px;
+            margin-bottom: 4px;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
+        .control-group input[type="range"] {
+            cursor: pointer;
+            width: 110px;
+        }
+
+        .control-group span {
+            font-weight: bold;
+        }
+
+        /* 좌측 사이드 패널 기본 규격 */
+        #leftSidePanel {
+            position: absolute;
+            top: 15px;
+            left: 20px;
+            width: 280px;
+            max-height: calc(100vh - 40px);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            z-index: 10;
+            font-family: sans-serif;
+        }
+
+        #planetNav {
+            background: rgba(40, 40, 40, 0.85);
+            border: 1px solid #666666;
+            border-radius: 12px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        #planetNav h3 {
+            margin: 4px 0 10px 4px;
+            color: #ffffff;
+            font-size: 14px;
+        }
+
+        .planet-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid #666666;
+            color: #ffffff;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            text-align: left;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .planet-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .planet-btn.active {
+            background: #ffffff;
+            color: #000000;
+            border-color: #ffffff;
+        }
+
+        /* 정보 패널 기본 규격 (애니메이션 제거) */
+        #infoPanel {
+            background: rgba(40, 40, 40, 0.9);
+            border: 1px solid #666666;
+            border-radius: 12px;
+            padding: 16px;
+            color: #ffffff;
+            display: none; 
+            overflow-y: auto;
+        }
+
+        #infoPanel h2 {
+            margin: 0 0 8px 0;
+            font-size: 18px;
+            border-bottom: 2px solid #ffffff;
+            padding-bottom: 6px;
+        }
+
+        #infoPanel .eng-name {
+            font-size: 11px;
+            color: #cccccc;
+            margin-top: -6px;
+            margin-bottom: 12px;
+        }
+
+        #infoPanel p {
+            margin: 0 0 12px 0;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+
+        #infoPanel .specs {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            border-left: 3px solid #ffffff;
+        }
+
+        #infoPanel .specs div {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        #infoPanel .specs span.label {
+            color: #cccccc;
+        }
+        
+        #infoPanel .specs span.val {
+            font-weight: bold;
+        }
+    </style>
+    </head>
+    <body>
+        <div id="leftSidePanel">
+            <div id="planetNav">
+                <button class="planet-btn" data-planet="sun">태양 (Sun)</button>
+                <button class="planet-btn" data-planet="mercury">수성 (Mercury)</button>
+                <button class="planet-btn" data-planet="venus">금성 (Venus)</button>
+                <button class="planet-btn" data-planet="earth">지구 (Earth)</button>
+                <button class="planet-btn" data-planet="mars">화성 (Mars)</button>
+                <button class="planet-btn" data-planet="jupiter">목성 (Jupiter)</button>
+                <button class="planet-btn" data-planet="saturn">토성 (Saturn)</button>
+                <button class="planet-btn" data-planet="uranus">천왕성 (Uranus)</button>
+                <button class="planet-btn" data-planet="neptune">해왕성 (Neptune)</button>
+            </div>
+
+            <div id="infoPanel">
+                <h2 id="infoName">지구</h2>
+                <div class="eng-name" id="infoEngName">Earth</div>
+                <p id="infoDesc">행성 설명</p>
+                <div class="specs">
+                    <div><span class="label">반지름 (지구 기준)</span><span class="val" id="specScale">1.00x</span></div>
+                    <div><span class="label">공전 주기</span><span class="val" id="specOrbit">365.2 일</span></div>
+                    <div><span class="label">자전 주기</span><span class="val" id="specRot">1.0 일</span></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="uiContainer">
+            <div class="control-group env-control">
+                <label>공전 속도: <span id="orbitVal">1.0</span>x</label>
+                <input type="range" id="orbitSpeed" min="0.0" max="20.0" step="0.1" value="1.0">
+            </div>
+            <div class="control-group env-control">
+                <label>자전 속도: <span id="rotVal">1.0</span>x</label>
+                <input type="range" id="rotSpeed" min="0.0" max="5.0" step="0.1" value="1.0">
+            </div>
+            <div class="control-group env-control">
+                <label>빛의 강도: <span id="lightVal">1.0</span>x</label>
+                <input type="range" id="lightIntensity" min="0.0" max="2.0" step="0.1" value="1.0">
+            </div>
+
+            <div class="control-group">
+                <label>수성 크기: <span id="mercuryVal">0.38</span></label>
+                <input type="range" id="mercuryScale" min="0.1" max="2.0" step="0.01" value="0.38">
+            </div>
+            <div class="control-group">
+                <label>금성 크기: <span id="venusVal">0.95</span></label>
+                <input type="range" id="venusScale" min="0.2" max="3.0" step="0.01" value="0.95">
+            </div>
+            <div class="control-group">
+                <label>지구 크기: <span id="earthVal">1.0</span></label>
+                <input type="range" id="earthScale" min="0.2" max="3.0" step="0.1" value="1.0">
+            </div>
+            <div class="control-group">
+                <label>화성 크기: <span id="marsVal">0.53</span></label>
+                <input type="range" id="marsScale" min="0.1" max="2.0" step="0.01" value="0.53">
+            </div>
+            <div class="control-group">
+                <label>목성 크기: <span id="jupiterVal">8.0</span></label>
+                <input type="range" id="jupiterScale" min="1.0" max="20.0" step="0.1" value="8.0">
+            </div>
+            <div class="control-group">
+                <label>토성 크기: <span id="saturnVal">7.0</span></label>
+                <input type="range" id="saturnScale" min="1.0" max="18.0" step="0.1" value="7.0">
+            </div>
+            <div class="control-group">
+                <label>천왕성 크기: <span id="uranusVal">3.5</span></label>
+                <input type="range" id="uranusScale" min="0.5" max="8.0" step="0.05" value="3.5">
+            </div>
+            <div class="control-group">
+                <label>해왕성 크기: <span id="neptuneVal">3.0</span></label>
+                <input type="range" id="neptuneScale" min="0.5" max="8.0" step="0.05" value="3.0">
+            </div>
+        </div>
+
+        <canvas id="glCanvas"></canvas>
+        <script type="text/javascript" src="shaders/initShaders2.js"></script>
+        <script type="text/javascript" src="MV.js"></script>
+        <script type="module">
+            var gl;
+            let vertices = [];
+            
+            var meshInfo = {
+                sun: { start: 0, count: 0 },
+                mercury: { start: 0, count: 0 },
+                venus: { start: 0, count: 0 },
+                earth: { start: 0, count: 0 },
+                moon: { start: 0, count: 0 },
+                mars: { start: 0, count: 0 },
+                jupiter: { start: 0, count: 0 },
+                saturn: { start: 0, count: 0 },
+                uranus: { start: 0, count: 0 },
+                neptune: { start: 0, count: 0 }
+            };
+
+            var program1;
+            
+            // 대형 목성/토성을 커버하기 위해 초기 카메라 위치를 기존 35에서 80으로 멀리 배치
+            var eye = vec3(0, 35, 80), at = vec3(0, 0, 0); 
+            
+            var worldMatrix, viewMatrix, projectMatrix;
+            var worldMatLoc1, viewMatLoc1, projMatLoc1, texImageLoc1;
+            var eyePosLoc1, matShLoc1, matSpecLoc1, matAmbiLoc1, matEmitLoc1;
+            
+            var isDragging = false;
+            var lastPos = vec3(0, 0, 0);
+            
+            // 왜곡 현상을 줄이기 위해 화각(FOV)은 45도로 고정
+            var fixedFov = 45.0;  
+            var rotationMatrix = mat4(); 
+
+            var angles = {
+                sunRot: 0.0,
+                mercuryOrbit: 0.0, mercuryRot: 0.0,
+                venusOrbit: 0.0, venusRot: 0.0,
+                earthOrbit: 0.0, earthRot: 0.0,
+                moonOrbit: 0.0,
+                marsOrbit: 0.0, marsRot: 0.0,
+                jupiterOrbit: 0.0, jupiterRot: 0.0,
+                saturnOrbit: 0.0, saturnRot: 0.0,
+                uranusOrbit: 0.0, uranusRot: 0.0,
+                neptuneOrbit: 0.0, neptuneRot: 0.0
+            };
+            
+            var isPaused = false;
+
+            // 지구 크기 1.0 기준 스케일
+            var config = {
+                orbitSpeedMultiplier: 1.0,
+                rotationSpeedMultiplier: 1.0,
+                lightIntensity: 1.0,
+                mercuryScale: 0.38,
+                venusScale: 0.95,
+                earthScale: 1.0,
+                marsScale: 0.53,
+                jupiterScale: 11.20,
+                saturnScale: 9.45,
+                uranusScale: 4.01,
+                neptuneScale: 3.88
+            };
+
+            const planetData = {
+                sun: { name: "태양", eng: "Sun", desc: "태양계 중심에 위치한 거대한 항성입니다. 태양계 전체 질량의 약 99.86%를 차지하며 막대한 열과 빛 에너지를 방출하여 성계 시스템의 광원이 됩니다.", scale: "109.0x (실제)", orbit: "중심 항성", rot: "25.4 일" },
+                mercury: { name: "수성", eng: "Mercury", desc: "태양과 가장 가까운 행성으로, 대기가 거의 없어 낮과 밤의 표면 온도 차이가 극심합니다. 표면은 달과 비슷하게 수많은 운석 구덩이로 가득 차 있습니다.", scale: "0.38x", orbit: "88.0 일", rot: "58.6 일" },
+                venus: { name: "금성", eng: "Venus", desc: "지구와 크기가 가장 비슷한 행성이지만, 이산화탄소로 가득 찬 두꺼운 대기층 때문에 폭주하는 온실효과가 발생하여 표면 온도가 섭씨 400도가 넘는 지옥 같은 환경입니다.", scale: "0.95x", orbit: "224.7 일", rot: "243.0 일 (역방향)" },
+                earth: { name: "지구", eng: "Earth", desc: "우리가 살고 있는 푸른 행성으로, 태양계에서 표면에 액체 상태의 물과 고등 생명체가 존재함이 증명된 유일한 천체입니다. 아름다운 위성인 '달'을 거느리고 있습니다.", scale: "1.00x", orbit: "365.2 일", rot: "1.0 일" },
+                mars: { name: "화성", eng: "Mars", desc: "표면의 산화철 성분 때문에 붉게 빛나는 행성입니다. 희박한 대기를 가지고 있으며 양극단에는 얼음과 드라이아이스로 이루어진 극관이 존재해 생명체 탐사의 주 대상입니다.", scale: "0.53x", orbit: "687.0 일", rot: "1.03 일" },
+                jupiter: { name: "목성", eng: "Jupiter", desc: "태양계 최대의 가스 거대 행성입니다. 지구 질량의 318배에 달하며, 표면에는 격렬한 대기 소용돌이인 '대적점'이 뚜렷하게 관측되는 것이 특징입니다.", scale: "11.20x", orbit: "11.8 년", rot: "0.41 일" },
+                saturn: { name: "토성", eng: "Saturn", desc: "얼음과 암석 파편으로 이루어진 압도적이고 아름다운 고리를 가진 가스 행성입니다. 밀도가 매우 낮아 만약 토성을 담을 수 있는 거대한 바다가 있다면 물 위에 뜰 수 있습니다.", scale: "9.45x", orbit: "29.5 년", rot: "0.44 일" },
+                uranus: { name: "천왕성", eng: "Uranus", desc: "메탄 가스로 인해 청록색으로 빛나는 얼음 거대 행성입니다. 다른 행성들과 달리 자전축이 약 98도 기울어져 완전히 누운 채로 태양을 공전하는 독특한 특징이 있습니다.", scale: "4.01x", orbit: "84.0 년", rot: "0.72 일 (역방향)" },
+                neptune: { name: "해왕성", eng: "Neptune", desc: "태양계의 가장 바깥쪽에 존재하는 얼음 거대 행성입니다. 짙은 푸른빛을 띠고 있으며, 태양계에서 가장 강력한 초속 수백 킬로미터의 대기 폭풍이 몰아치는 역동적인 행성입니다.", scale: "3.88x", orbit: "164.8 년", rot: "0.67 일" }
+            };
+
+            await loadAllModels();
+            await init();
+            render();
+
+            async function loadAllModels() {
+                const keys = Object.keys(meshInfo);
+                for (let key of keys) {
+                    meshInfo[key].start = vertices.length / 8;
+                    meshInfo[key].count = await loadOBJModel("models/sphere.obj");
+                }
+            }
+
+            async function init() {
+                var canvas = document.getElementById('glCanvas');
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+
+                gl = canvas.getContext('webgl2', { antialias: false, alpha: true });
+                if(!gl) { alert("WebGL 2 is not available!"); return; }
+
+                gl.viewport(0, 0, canvas.width, canvas.height);
+                gl.clearColor(0.0, 0.0, 0.0, 0.0);
+                gl.enable(gl.DEPTH_TEST);
+
+                program1 = initShaders(gl, "shaders/vert.glsl", "shaders/frag.glsl");
+                gl.useProgram(program1);
+
+                var vbufferId = gl.createBuffer();
+                gl.bindBuffer(gl.ARRAY_BUFFER, vbufferId);
+                gl.bufferData(gl.ARRAY_BUFFER, flatten(vertices), gl.STATIC_DRAW);
+
+                gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 32, 0);  
+                gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 32, 12); 
+                gl.enableVertexAttribArray(2); gl.vertexAttribPointer(2, 2, gl.FLOAT, false, 32, 24); 
+
+                worldMatLoc1 = gl.getUniformLocation(program1, "worldMat");
+                viewMatLoc1 = gl.getUniformLocation(program1, "viewMat");
+                projMatLoc1 = gl.getUniformLocation(program1, "projMat");
+                texImageLoc1 = gl.getUniformLocation(program1, "texImage");
+
+                viewMatrix = lookAt(eye, at, vec3(0, 1, 0));
+                gl.uniformMatrix4fv(viewMatLoc1, false, flatten(viewMatrix));
+                
+                var aspectRatio = canvas.width / canvas.height;
+                projectMatrix = perspective(fixedFov, aspectRatio, 0.1, 2000); 
+                gl.uniformMatrix4fv(projMatLoc1, false, flatten(projectMatrix));
+
+                await loadTexture("Images/sun.jpg", gl.TEXTURE0);
+                await loadTexture("Images/mercury.jpg", gl.TEXTURE1);
+                await loadTexture("Images/venus.jpg", gl.TEXTURE2);
+                await loadTexture("Images/earth_daymap.jpg", gl.TEXTURE3);
+                await loadTexture("Images/moon.jpg", gl.TEXTURE4);
+                await loadTexture("Images/mars.jpg", gl.TEXTURE5);
+                await loadTexture("Images/jupiter.jpg", gl.TEXTURE6);
+                await loadTexture("Images/saturn.jpg", gl.TEXTURE7);
+                await loadTexture("Images/uranus.jpg", gl.TEXTURE8);
+                await loadTexture("Images/neptune.jpg", gl.TEXTURE9);
+
+                function loadTexture(src, textureUnit) {
+                    return new Promise((resolve, reject) => {
+                        var imageTex = new Image();
+                        imageTex.src = src;
+                        imageTex.onload = function() {
+                            var textureID = gl.createTexture();
+                            gl.activeTexture(textureUnit);
+                            gl.bindTexture(gl.TEXTURE_2D, textureID);
+                            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, imageTex);
+                            gl.generateMipmap(gl.TEXTURE_2D);
+                            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+                            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+                            resolve();
+                        };
+                        imageTex.onerror = () => { resolve(); };
+                    });
+                }
+
+                eyePosLoc1 = gl.getUniformLocation(program1, "eyePos");
+                matShLoc1 = gl.getUniformLocation(program1, "matSh");
+                matSpecLoc1 = gl.getUniformLocation(program1, "matSpec");
+                matAmbiLoc1 = gl.getUniformLocation(program1, "matAmbi");
+                matEmitLoc1 = gl.getUniformLocation(program1, "matEmit");
+
+                gl.uniform3f(gl.getUniformLocation(program1, "srcDiff"), 1.2, 1.2, 1.2);
+                gl.uniform3f(gl.getUniformLocation(program1, "srcSpec"), 1.0, 1.0, 1.0);
+                gl.uniform3f(gl.getUniformLocation(program1, "srcAmbi"), 0.3, 0.3, 0.3);
+                gl.uniform3f(gl.getUniformLocation(program1, "lightDir"), 0.0, 0.0, 0.0); 
+
+                function setupSliderEvents() {
+                    const sliders = [
+                        { id: 'orbitSpeed', key: 'orbitSpeedMultiplier', textId: 'orbitVal' },
+                        { id: 'rotSpeed', key: 'rotationSpeedMultiplier', textId: 'rotVal' },
+                        { id: 'lightIntensity', key: 'lightIntensity', textId: 'lightVal' },
+                        { id: 'mercuryScale', key: 'mercuryScale', textId: 'mercuryVal' },
+                        { id: 'venusScale', key: 'venusScale', textId: 'venusVal' },
+                        { id: 'earthScale', key: 'earthScale', textId: 'earthVal' },
+                        { id: 'marsScale', key: 'marsScale', textId: 'marsVal' },
+                        { id: 'jupiterScale', key: 'jupiterScale', textId: 'jupiterVal' },
+                        { id: 'saturnScale', key: 'saturnScale', textId: 'saturnVal' },
+                        { id: 'uranusScale', key: 'uranusScale', textId: 'uranusVal' },
+                        { id: 'neptuneScale', key: 'neptuneScale', textId: 'neptuneVal' }
+                    ];
+
+                    sliders.forEach(slider => {
+                        const element = document.getElementById(slider.id);
+                        const textElement = document.getElementById(slider.textId);
+                        if(element && textElement) {
+                            element.addEventListener('input', (event) => {
+                                config[slider.key] = parseFloat(event.target.value);
+                                textElement.innerText = event.target.value;
+                            });
+                        }
+                    });
+                }
+                setupSliderEvents();
+
+                function setupPlanetNavEvents() {
+                    const buttons = document.querySelectorAll('.planet-btn');
+                    const infoPanel = document.getElementById('infoPanel');
+                    
+                    buttons.forEach(btn => {
+                        btn.addEventListener('click', () => {
+                            // 기존 활성화 클래스 제거 및 타겟 버튼 적용
+                            buttons.forEach(b => b.classList.remove('active'));
+                            btn.classList.add('active');
+
+                            const planetKey = btn.getAttribute('data-planet');
+                            const data = planetData[planetKey];
+
+                            if (data) {
+                                // 정보 패널에 데이터 바인딩
+                                document.getElementById('infoName').innerText = data.name;
+                                document.getElementById('infoEngName').innerText = data.eng;
+                                document.getElementById('infoDesc').innerText = data.desc;
+                                document.getElementById('specScale').innerText = data.scale;
+                                document.getElementById('specOrbit').innerText = data.orbit;
+                                document.getElementById('specRot').innerText = data.rot;
+
+                                // 감춰져 있던 정보 패널 노출
+                                infoPanel.style.display = 'block';
+                            }
+                        });
+                    });
+                }
+                setupPlanetNavEvents();
+
+                function projectToArcball(xi, yi){
+                    var px = (2.0 * xi - canvas.width) / canvas.width; 
+                    var py = (canvas.height - 2.0 * yi) / canvas.height;
+                    var length2 = px * px + py * py;
+                    if(length2 <= 1.0) return vec3(px, py, Math.sqrt(1.0 - length2));
+                    else { var len = Math.sqrt(length2); return vec3(px / len, py / len, 0.0); }
+                }
+
+                canvas.addEventListener("mousedown", function(event) { 
+                    isDragging = true; 
+                    lastPos = projectToArcball(event.clientX, event.clientY); 
+                    canvas.style.cursor = "grab"; 
+                });
+
+                canvas.addEventListener("mouseup", function(){ isDragging = false; canvas.style.cursor = "default"; });
+                canvas.addEventListener("mouseleave", function(){ isDragging = false; canvas.style.cursor = "default"; });
+
+                canvas.addEventListener("mousemove", function(event){
+                    if(!isDragging) return;
+                    var currentPos = projectToArcball(event.clientX, event.clientY);
+                    var axis = cross(lastPos, currentPos);
+                    var angle = Math.acos(Math.min(1.0, Math.max(-1.0, dot(lastPos, currentPos)))) * 180.0 / Math.PI;
+                    if(angle > 0.1){ 
+                        rotationMatrix = mult(rotate(angle, axis), rotationMatrix); 
+                        lastPos = currentPos; 
+                    }
+                });
+
+                canvas.addEventListener("wheel", function(event){
+                    event.preventDefault(); 
+                    
+                    var zoomIntensity = 3.0; 
+                    if(event.deltaY > 0) {
+                        eye[2] += zoomIntensity;
+                        eye[1] += zoomIntensity * 0.35; 
+                    } else {
+                        eye[2] -= zoomIntensity;
+                        eye[1] -= zoomIntensity * 0.35;
+                    }
+                    
+                    eye[2] = Math.max(5.0, Math.min(eye[2], 250.0));
+                    eye[1] = Math.max(2.0, Math.min(eye[1], 100.0));
+                    
+                }, {passive: false});
+
+                window.addEventListener("keydown", function(event) {
+                    if (event.key === " ") { 
+                        event.preventDefault(); 
+                        isPaused = !isPaused;
+                    }
+                });
+
+                window.onresize = function() {
+                    canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+                    gl.viewport(0, 0, canvas.width, canvas.height);
+                    projectMatrix = perspective(fixedFov, canvas.width / canvas.height, 0.1, 2000);
+                };
+            }
+
+            function render() {
+                gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+                if (!isPaused) {
+                    const dt = 0.005 * config.orbitSpeedMultiplier;
+                    const rt = 0.005 * config.rotationSpeedMultiplier;
+
+                    angles.sunRot += rt * 0.5;
+                    
+                    angles.mercuryOrbit += dt * 4.1;   angles.mercuryRot += rt * 1.5;
+                    angles.venusOrbit   += dt * 1.6;   angles.venusRot   += rt * -1.2; 
+                    angles.earthOrbit   += dt * 1.0;   angles.earthRot   += rt * 25.0;
+                    angles.moonOrbit    += dt * 12.0; 
+                    angles.marsOrbit    += dt * 0.53;  angles.marsRot    += rt * 24.0;
+                    angles.jupiterOrbit += dt * 0.08;  angles.jupiterRot += rt * 50.0; 
+                    angles.saturnOrbit  += dt * 0.03;  angles.saturnRot  += rt * 45.0;
+                    angles.uranusOrbit  += dt * 0.01;  angles.uranusRot  += rt * -30.0;
+                    angles.neptuneOrbit += dt * 0.006; angles.neptuneRot += rt * 35.0;
+                }
+
+                var baseViewMatrix = lookAt(eye, at, vec3(0, 1, 0));
+                viewMatrix = mult(baseViewMatrix, rotationMatrix); 
+                
+                gl.uniform3fv(eyePosLoc1, flatten(eye), 0);
+                gl.uniformMatrix4fv(viewMatLoc1, false, flatten(viewMatrix));
+                
+                var aspectRatio = gl.canvas.width / gl.canvas.height;
+                projectMatrix = perspective(fixedFov, aspectRatio, 0.1, 2000);
+                gl.uniformMatrix4fv(projMatLoc1, false, flatten(projectMatrix));
+
+                gl.uniform3f(gl.getUniformLocation(program1, "srcAmbi"), 0.3 * config.lightIntensity, 0.3 * config.lightIntensity, 0.3 * config.lightIntensity);
+                gl.uniform3f(gl.getUniformLocation(program1, "srcDiff"), 1.2 * config.lightIntensity, 1.2 * config.lightIntensity, 1.2 * config.lightIntensity);
+
+                // 0. 태양
+                gl.uniform1i(texImageLoc1, 0); 
+                gl.uniform1f(matShLoc1, 10.0);
+                gl.uniform3f(matSpecLoc1, 0.2, 0.2, 0.2);
+                gl.uniform3f(matAmbiLoc1, 1.0, 1.0, 1.0); 
+                gl.uniform3f(matEmitLoc1, 1.0, 1.0, 1.0); 
+
+                worldMatrix = rotate(angles.sunRot, vec3(0, 1, 0));
+                worldMatrix = mult(worldMatrix, scalem(15.0, 15.0, 15.0));
+                gl.uniformMatrix4fv(worldMatLoc1, false, flatten(worldMatrix));
+                gl.drawArrays(gl.TRIANGLES, meshInfo.sun.start, meshInfo.sun.count);
+
+                gl.uniform3f(matEmitLoc1, 0.0, 0.0, 0.0);
+
+                // 1. 수성
+                gl.uniform1i(texImageLoc1, 1); gl.uniform1f(matShLoc1, 5.0);
+                var matMercury = rotate(angles.mercuryOrbit, vec3(0, 1, 0));
+                matMercury = mult(matMercury, translate(11.0, 0.0, 0.0));
+                matMercury = mult(matMercury, rotate(angles.mercuryRot, vec3(0, 1, 0)));
+                matMercury = mult(matMercury, scalem(config.mercuryScale, config.mercuryScale, config.mercuryScale));
+                gl.uniformMatrix4fv(worldMatLoc1, false, flatten(matMercury));
+                gl.drawArrays(gl.TRIANGLES, meshInfo.mercury.start, meshInfo.mercury.count);
+
+                // 2. 금성
+                gl.uniform1i(texImageLoc1, 2); gl.uniform1f(matShLoc1, 15.0);
+                var matVenus = rotate(angles.venusOrbit, vec3(0, 1, 0));
+                matVenus = mult(matVenus, translate(14.0, 0.0, 0.0));
+                matVenus = mult(matVenus, rotate(angles.venusRot, vec3(0, 1, 0)));
+                matVenus = mult(matVenus, scalem(config.venusScale, config.venusScale, config.venusScale));
+                gl.uniformMatrix4fv(worldMatLoc1, false, flatten(matVenus));
+                gl.drawArrays(gl.TRIANGLES, meshInfo.venus.start, meshInfo.venus.count);
+
+                // 3. 지구
+                gl.uniform1i(texImageLoc1, 3); gl.uniform1f(matShLoc1, 25.0);
+                var earthOrbitMat = rotate(angles.earthOrbit, vec3(0, 1, 0));
+                earthOrbitMat = mult(earthOrbitMat, translate(18.0, 0.0, 0.0)); 
+
+                var earthWorldMatrix = mult(earthOrbitMat, rotate(23.5, vec3(0, 0, 1)));
+                earthWorldMatrix = mult(earthWorldMatrix, rotate(angles.earthRot, vec3(0, 1, 0)));
+                earthWorldMatrix = mult(earthWorldMatrix, scalem(config.earthScale, config.earthScale, config.earthScale));
+                gl.uniformMatrix4fv(worldMatLoc1, false, flatten(earthWorldMatrix));
+                gl.drawArrays(gl.TRIANGLES, meshInfo.earth.start, meshInfo.earth.count);
+
+                // 달 
+                gl.uniform1i(texImageLoc1, 4); gl.uniform1f(matShLoc1, 2.0);
+                var moonWorldMatrix = mult(earthOrbitMat, rotate(angles.moonOrbit, vec3(0, 1, 0)));
+                var moonOffset = 1.2 + (config.earthScale * 0.4);
+                moonWorldMatrix = mult(moonWorldMatrix, translate(moonOffset, 0.0, 0.0));
+                var mScale = 0.27 * config.earthScale; 
+                moonWorldMatrix = mult(moonWorldMatrix, scalem(mScale, mScale, mScale));
+                gl.uniformMatrix4fv(worldMatLoc1, false, flatten(moonWorldMatrix));
+                gl.drawArrays(gl.TRIANGLES, meshInfo.moon.start, meshInfo.moon.count);
+
+                // 4. 화성 
+                gl.uniform1i(texImageLoc1, 5); gl.uniform1f(matShLoc1, 12.0);
+                var matMars = rotate(angles.marsOrbit, vec3(0, 1, 0));
+                matMars = mult(matMars, translate(22.0, 0.0, 0.0));
+                matMars = mult(matMars, rotate(angles.marsRot, vec3(0, 1, 0)));
+                matMars = mult(matMars, scalem(config.marsScale, config.marsScale, config.marsScale));
+                gl.uniformMatrix4fv(worldMatLoc1, false, flatten(matMars));
+                gl.drawArrays(gl.TRIANGLES, meshInfo.mars.start, meshInfo.mars.count);
+
+                // 5. 목성
+                gl.uniform1i(texImageLoc1, 6); gl.uniform1f(matShLoc1, 8.0);
+                var matJupiter = rotate(angles.jupiterOrbit, vec3(0, 1, 0));
+                matJupiter = mult(matJupiter, translate(36.0, 0.0, 0.0));
+                matJupiter = mult(matJupiter, rotate(angles.jupiterRot, vec3(0, 1, 0)));
+                matJupiter = mult(matJupiter, scalem(config.jupiterScale, config.jupiterScale, config.jupiterScale));
+                gl.uniformMatrix4fv(worldMatLoc1, false, flatten(matJupiter));
+                gl.drawArrays(gl.TRIANGLES, meshInfo.jupiter.start, meshInfo.jupiter.count);
+
+                // 6. 토성
+                gl.uniform1i(texImageLoc1, 7); gl.uniform1f(matShLoc1, 10.0);
+                var matSaturn = rotate(angles.saturnOrbit, vec3(0, 1, 0));
+                matSaturn = mult(matSaturn, translate(58.0, 0.0, 0.0));
+                matSaturn = mult(matSaturn, rotate(angles.saturnRot, vec3(0, 1, 0)));
+                matSaturn = mult(matSaturn, scalem(config.saturnScale, config.saturnScale, config.saturnScale));
+                gl.uniformMatrix4fv(worldMatLoc1, false, flatten(matSaturn));
+                gl.drawArrays(gl.TRIANGLES, meshInfo.saturn.start, meshInfo.saturn.count);
+
+                // 7. 천왕성
+                gl.uniform1i(texImageLoc1, 8); gl.uniform1f(matShLoc1, 15.0);
+                var matUranus = rotate(angles.uranusOrbit, vec3(0, 1, 0));
+                matUranus = mult(matUranus, translate(74.0, 0.0, 0.0));
+                matUranus = mult(matUranus, rotate(97.8, vec3(1, 0, 0)));
+                matUranus = mult(matUranus, rotate(angles.uranusRot, vec3(0, 1, 0)));
+                matUranus = mult(matUranus, scalem(config.uranusScale, config.uranusScale, config.uranusScale));
+                gl.uniformMatrix4fv(worldMatLoc1, false, flatten(matUranus));
+                gl.drawArrays(gl.TRIANGLES, meshInfo.uranus.start, meshInfo.uranus.count);
+
+                // 8. 해왕성
+                gl.uniform1i(texImageLoc1, 9); gl.uniform1f(matShLoc1, 15.0);
+                var matNeptune = rotate(angles.neptuneOrbit, vec3(0, 1, 0));
+                matNeptune = mult(matNeptune, translate(86.0, 0.0, 0.0));
+                matNeptune = mult(matNeptune, rotate(angles.neptuneRot, vec3(0, 1, 0)));
+                matNeptune = mult(matNeptune, scalem(config.neptuneScale, config.neptuneScale, config.neptuneScale));
+                gl.uniformMatrix4fv(worldMatLoc1, false, flatten(matNeptune));
+                gl.drawArrays(gl.TRIANGLES, meshInfo.neptune.start, meshInfo.neptune.count);
+
+                window.requestAnimationFrame(render);
+            }
+
+            async function loadOBJModel(objPath) {
+                try {
+                    const response = await fetch(objPath);
+                    if(!response.ok) throw new Error(`네트워크 오류: ${response.status}`);
+                    const objText = await response.text();
+                    const lines = objText.split("\n");
+
+                    var positions = [], normals = [], texCoords = [];
+                    var localVertexCount = 0;
+                    var posIndex = [], norIndex = [], texIndex = [];
+
+                    for(var i=0; i < lines.length; i++) {
+                        const parts = lines[i].trim().split(/\s+/);
+                        const keyword = parts[0];
+
+                        if(keyword === "v") {
+                            positions.push(vec3(parseFloat(parts[1]), parseFloat(parts[2]), parseFloat(parts[3])));
+                        } else if(keyword === "vn") {
+                            normals.push(vec3(parseFloat(parts[1]), parseFloat(parts[2]), parseFloat(parts[3])));
+                        } else if(keyword === "vt") {
+                            texCoords.push(vec2(parseFloat(parts[1]), parseFloat(parts[2])));
+                        } else if(keyword === "f") {
+                            var pIndices = [], nIndices = [], tIndices = [];
+                            for(var j=1; j<parts.length; j++) {
+                                var indices = parts[j].split('/');
+                                pIndices.push(parseInt(indices[0]) - 1);
+                                tIndices.push(indices[1] ? parseInt(indices[1])-1 : -1);
+                                nIndices.push(indices[2] ? parseInt(indices[2])-1 : -1);
+                            }
+                            for(var j=1; j<pIndices.length-1; j++) {
+                                posIndex.push(pIndices[0], pIndices[j], pIndices[j+1]);
+                                texIndex.push(tIndices[0], tIndices[j], tIndices[j+1]);
+                                norIndex.push(nIndices[0], nIndices[j], nIndices[j+1]);
+                            }
+                        }
+                    }
+
+                    var min = [Infinity, Infinity, Infinity], max = [-Infinity, -Infinity, -Infinity];
+                    for(var i=0; i<positions.length; i++) {
+                        for(var j=0; j<3; j++) {
+                            if(positions[i][j] < min[j]) min[j] = positions[i][j];
+                            if(positions[i][j] > max[j]) max[j] = positions[i][j];
+                        }
+                    }
+                    var center = [(max[0]+min[0])/2, (max[1]+min[1])/2, (max[2]+min[2])/2];
+                    var maxExtent = Math.max(max[0]-min[0], max[1]-min[1], max[2]-min[2]);
+                    var scaleFactor = 1.0 / maxExtent;
+
+                    for(var i = 0; i < positions.length; i++) {
+                        positions[i][0] = (positions[i][0] - center[0]) * scaleFactor;
+                        positions[i][1] = (positions[i][1] - center[1]) * scaleFactor;
+                        positions[i][2] = (positions[i][2] - center[2]) * scaleFactor;
+                    }
+
+                    for(var i=0; i<posIndex.length; i++) {
+                        vertices.push(positions[posIndex[i]]);
+                        vertices.push((norIndex[i] == -1) ? vec3(0, 1, 0) : normals[norIndex[i]]);
+                        vertices.push((texIndex[i] == -1) ? vec2(0, 0) : texCoords[texIndex[i]]);
+                        localVertexCount++;
+                    }
+                    return localVertexCount;
+                } catch(error) {
+                    console.error(`${objPath} 파싱 실패: ${error}`);
+                    return 0;
+                }
+            }
+        </script>
+    </body>
+</html>
